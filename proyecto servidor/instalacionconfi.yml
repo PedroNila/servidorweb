@@ -1,0 +1,134 @@
+---
+- name: Instalación de PHP, MySQL, Apache2 y libapache2 y configuraciones 
+  hosts: 192.168.100.112
+  become: yes
+  tasks:
+    - name: Actualizar lista de paquetes
+      apt:
+        update_cache: yes
+
+    - name: Instalar Apache2
+      apt:
+        name: apache2
+        state: present
+
+    - name: Instalar MySQL
+      apt:
+        name: mysql-server
+        state: present
+      vars:
+        mysql_root_password: asquerosito
+
+    - name: Instalar PHP 
+      apt:
+        name:
+          - php
+          - libapache2-mod-php
+        state: present
+
+    - name: Reiniciar Apache2
+      service:
+        name: apache2
+        state: restarted
+
+    - name: Instalar UFW (Uncomplicated Firewall)
+      apt:
+        name: ufw
+        state: present
+
+    - name: Permitir tráfico HTTP en el puerto 80
+      ufw:
+        rule: allow
+        port: 80
+        proto: tcp
+
+    - name: Reiniciar Apache2
+      service:
+        name: apache2
+        state: restarted
+
+    - name: Instalar PHP y sus paquetes
+      apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - php
+        - libapache2-mod-php
+        - php-mysql
+
+    - name: Crear usuario en MySQL con todos los privilegios
+      mysql_user:
+        name: pedro
+        host: 192.168.100.112
+        password: asquerosito
+        priv: '*.*:ALL'
+        state: present
+
+- name: Crear archivo de configuración .www del VirtualHost
+  hosts: 192.168.100.112
+  become: yes
+  tasks:
+    - name: Copiar archivo de configuración .com del VirtualHost
+      copy:
+        src: /ruta/local/PNila.com.conf  # Ruta local al archivo de configuración
+        dest: /etc/apache2/sites-available/PNila.com.conf
+      notify: Reiniciar Apache2
+
+- name: Crear archivo de configuración .app del VirtualHost
+  hosts: 192.168.100.112
+  become: yes
+  tasks:
+    - name: Copiar archivo de configuración del VirtualHost
+      copy:
+        src: /ruta/local/PNila.app.conf  # Ruta local al archivo de configuración
+        dest: /etc/apache2/sites-available/PNila.app.conf
+      notify: Reiniciar Apache2
+
+    - name: Habilitar el VirtualHost www
+      command: a2ensite PNila.com.conf
+      args:
+        executable: /usr/sbin/a2ensite
+      notify: Reiniciar Apache2
+
+    - name: Habilitar el VirtualHost app
+      command: a2ensite PNila.app.conf
+      args:
+        executable: /usr/sbin/a2ensite
+      notify: Reiniciar Apache2
+
+- name: Crear la base de datos y tablas en MySQL
+  hosts: 192.168.100.112
+  become: yes
+  tasks:
+    - name: Crear la base de datos
+      mysql_db:
+        name: BDserver
+        state: present
+      environment:
+        MYSQL_USER: pedro
+        MYSQL_HOST: 192.168.100.112
+        MYSQL_PASSWORD: asquerosito
+
+    - name: Usar la base de datos 
+      mysql_db:
+        name: BDserver
+      environment:
+        MYSQL_USER: pedro
+        MYSQL_HOST: 192.168.100.112
+        MYSQL_PASSWORD: asquerosito
+
+    - name: Crear la tabla de alumnos
+      mysql_db:
+        name: BDserver
+        state: table
+        login_user: pedro
+        login_password: asquerosito
+        login_host: 192.168.100.112
+        db: BDserver
+        sql: |
+          CREATE TABLE alumnos (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            nombre VARCHAR(255) NOT NULL,
+            apellido VARCHAR(255) NOT NULL,
+            grado INT NOT NULL
+          );

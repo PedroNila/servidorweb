@@ -1,0 +1,12 @@
+CREATE DATABASE BDserver;
+
+-- Usar la base de datos
+USE BDserver;
+
+-- Crear la tabla de alumnos con un campo "id"
+CREATE TABLE alumnos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(255) NOT NULL,
+    apellido VARCHAR(255) NOT NULL,
+    grado INT NOT NULL
+);  puedes hacerme un yml para hacer que cree esto
